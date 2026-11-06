@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A Risk Predictor for Septic Shock Severity</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', 'Microsoft YaHei', Arial, sans-serif;
+            background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%);
+            min-height: 100vh;
+            padding: 25px;
+        }
+        .container {
+            max-width: 950px;
+            margin: 0 auto;
+            background: #ffffff;
+            border-radius: 16px;
+            box-shadow: 0 30px 90px rgba(0,0,0,0.45);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #1a365d 0%, #234e70 100%);
+            color: white;
+            padding: 38px 30px;
+            text-align: center;
+        }
+        .header h1 {
+            font-size: 27px;
+            font-weight: 600;
+            letter-spacing: 1.5px;
+            margin-bottom: 10px;
+        }
+        .header .subtitle {
+            opacity: 0.85;
+            font-size: 14px;
+            font-weight: 300;
+        }
+        .content {
+            padding: 32px;
+        }
+        .input-section {
+            background: linear-gradient(135deg, #f8fafc 0%, #edf2f7 100%);
+            padding: 26px;
+            border-radius: 12px;
+            margin-bottom: 28px;
+            border: 1px solid #e2e8f0;
+        }
+        .form-group {
+            margin-bottom: 22px;
+        }
+        .form-group:last-of-type {
+            margin-bottom: 0;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 9px;
+            font-weight: 600;
+            color: #1a365d;
+            font-size: 14px;
+        }
+        .form-group input[type="text"],
+        .form-group textarea {
+            width: 100%;
+            padding: 14px 16px;
+            border: 2px solid #cbd5e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s;
+            background: #fff;
+            font-family: inherit;
+        }
+        .form-group input[type="text"]:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #3182ce;
+            box-shadow: 0 0 0 4px rgba(49, 130, 206, 0.12);
+        }
+        .form-group textarea {
+            min-height: 170px;
+            resize: vertical;
+            line-height: 1.65;
+        }
+        .btn-start {
+            background: linear-gradient(135deg, #1a365d 0%, #2563eb 100%);
+            color: white;
+            border: none;
+            padding: 16px 55px;
+            font-size: 15px;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: block;
+            margin: 26px auto 0;
+            letter-spacing: 1.2px;
+        }
+        .btn-start:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 28px rgba(26, 54, 93, 0.35);
+        }
+        .btn-start:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .loading {
+            text-align: center;
+            padding: 70px 40px;
+        }
+        .spinner {
+            width: 52px;
+            height: 52px;
+            border: 5px solid #e2e8f0;
+            border-top-color: #1a365d;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 22px;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .loading p {
+            font-size: 15px;
+            color: #4a5568;
+        }
+        .error-box {
+            background: #fff5f5;
+            border: 2px solid #fc8181;
+            color: #c53030;
+            padding: 24px;
+            border-radius: 12px;
+            margin: 20px 0;
+        }
+        .error-box strong {
+            font-size: 15px;
+            display: block;
+            margin-bottom: 10px;
+        }
+        .error-box pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            background: #fff;
+            padding: 14px;
+            border-radius: 6px;
+            font-size: 12px;
+            color: #742a2a;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .result-section {
+            margin-top: 5px;
+        }
+        .probability-box {
+            background: linear-gradient(135deg, #1a365d 0%, #234e70 100%);
+            color: white;
+            padding: 32px;
+            border-radius: 14px;
+            text-align: center;
+            margin-bottom: 28px;
+        }
+        .probability-box h3 {
+            font-size: 13px;
+            opacity: 0.9;
+            margin-bottom: 10px;
+            font-weight: 400;
+        }
+        .probability-value {
+            font-size: 60px;
+            font-weight: 700;
+        }
+        .probability-label {
+            font-size: 15px;
+            opacity: 0.85;
+            margin-top: 10px;
+        }
+        .visual-bar-wrapper {
+            background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
+            padding: 28px;
+            border-radius: 14px;
+            margin-bottom: 28px;
+            border: 1px solid #e2e8f0;
+        }
+        .visual-bar-wrapper h4 {
+            color: #1a365d;
+            margin-bottom: 20px;
+            font-size: 14px;
+            text-align: center;
+        }
+        .risk-bar-track {
+            position: relative;
+            height: 52px;
+            background: linear-gradient(90deg,
+                #22c55e 0%,
+                #22c55e 18%,
+                #84cc16 18%,
+                #eab308 45%,
+                #f97316 72%,
+                #ef4444 100%
+            );
+            border-radius: 26px;
+            overflow: visible;
+            box-shadow: inset 0 3px 5px rgba(0,0,0,0.12);
+        }
+        .risk-pointer {
+            position: absolute;
+            top: -10px;
+            left: 0%;
+            transform: translateX(-50%);
+            transition: left 1.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .risk-pointer::before {
+            content: '';
+            display: block;
+            width: 0;
+            height: 0;
+            border-left: 15px solid transparent;
+            border-right: 15px solid transparent;
+            border-top: 20px solid #1a365d;
+        }
+        .risk-pointer::after {
+            content: attr(data-value);
+            position: absolute;
+            top: -42px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1a365d;
+            color: white;
+            padding: 6px 15px;
+            border-radius: 16px;
+            font-size: 14px;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+        .scale-labels {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 18px 0;
+            font-size: 11px;
+            color: #718096;
+        }
+        .info-row {
+            display: flex;
+            justify-content: center;
+            gap: 35px;
+            margin-top: 24px;
+            flex-wrap: wrap;
+        }
+        .info-item {
+            text-align: center;
+            min-width: 130px;
+        }
+        .info-label {
+            font-size: 11px;
+            color: #718096;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 7px;
+        }
+        .info-value {
+            font-size: 14px;
+            font-weight: 600;
+            color: #1a365d;
+        }
+        .tag {
+            display: inline-block;
+            background: #e2e8f0;
+            padding: 6px 13px;
+            border-radius: 16px;
+            font-size: 12px;
+            margin: 3px;
+            color: #2d3748;
+        }
+        .tag.active {
+            background: #3182ce;
+            color: #fff;
+        }
+        .analysis-box {
+            background: linear-gradient(135deg, #f7fafc 0%, #fff 100%);
+            border-left: 5px solid #3182ce;
+            padding: 24px;
+            border-radius: 0 12px 12px 0;
+            margin-bottom: 28px;
+            border: 1px solid #e2e8f0;
+        }
+        .analysis-box h3 {
+            color: #1a365d;
+            margin-bottom: 15px;
+            font-size: 15px;
+        }
+        .analysis-content {
+            line-height: 1.9;
+            color: #2d3748;
+            white-space: pre-wrap;
+            font-size: 14px;
+        }
+        .drug-box {
+            background: linear-gradient(135deg, #fef5e7 0%, #fffbf0 100%);
+            border-left: 5px solid #dd6b20;
+            padding: 24px;
+            border-radius: 0 12px 12px 0;
+            margin-bottom: 28px;
+            border: 1px solid #e2e8f0;
+        }
+        .drug-box h3 {
+            color: #c05621;
+            margin-bottom: 15px;
+            font-size: 15px;
+        }
+        .drug-item {
+            background: #fff;
+            border: 1px solid #ed8936;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 12px;
+        }
+        .drug-header {
+            color: #c05621;
+            font-size: 15px;
+            margin-bottom: 10px;
+        }
+        .drug-section {
+            font-size: 13px;
+            color: #4a5568;
+            margin-bottom: 8px;
+        }
+        .drug-section strong {
+            color: #2d3748;
+        }
+        .references-box {
+            background: #fafbfc;
+            border: 1px solid #e2e8f0;
+            padding: 24px;
+            border-radius: 12px;
+        }
+        .references-box h4 {
+            color: #1a365d;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+        .references-list {
+            list-style: none;
+            padding: 0;
+        }
+        .references-list li {
+            padding: 11px 0;
+            border-bottom: 1px solid #edf2f7;
+            font-size: 13px;
+            color: #4a5568;
+            line-height: 1.65;
+        }
+        .references-list li:last-child {
+            border-bottom: none;
+        }
+        .references-list a {
+            color: #3182ce;
+            text-decoration: none;
+        }
+        .references-list a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>A Risk Predictor for Septic Shock Severity</h1>
+            <div class="subtitle">28-Day Mortality Risk Prediction for ICU Patients with Septic Shock</div>
+        </div>
+        <div class="content">
+            <div class="input-section">
+                <div class="form-group">
+                    <label for="patientId">Patient ID</label>
+                    <input type="text" id="patientId" placeholder="Enter Patient ID..." />
+                </div>
+                <div class="form-group">
+                    <label for="patientInfo">Patient Clinical Information</label>
+                    <textarea id="patientInfo" placeholder="Enter patient condition, vital signs, laboratory results, diagnosis, treatments, medical history..."></textarea>
+                </div>
+                <button class="btn-start" onclick="startPrediction()" id="startBtn">Start</button>
+            </div>
+            <div id="resultContainer"></div>
+        </div>
+    </div>
+
+    <script>
+        async function startPrediction() {
+            const patientId = document.getElementById('patientId').value.trim();
+            const patientInfo = document.getElementById('patientInfo').value.trim();
+            const btn = document.getElementById('startBtn');
+            const container = document.getElementById('resultContainer');
+
+            if (!patientId || !patientInfo) {
+                alert('Please enter both Patient ID and Clinical Information');
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = 'Analyzing...';
+
+            container.innerHTML = `
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>Analyzing patient clinical data and generating prediction...</p>
+                </div>
+            `;
+
+            try {
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        patient_id: patientId,
+                        patient_info: patientInfo
+                    })
+                });
+
+                const result = await response.json();
+                console.log('[DEBUG] Received result:', JSON.stringify(result, null, 2));
+
+                if (result.error) {
+                    container.innerHTML = `
+                        <div class="error-box">
+                            <strong>Error:</strong>
+                            <pre>${result.error}</pre>
+                        </div>
+                    `;
+                } else {
+                    renderResult(result);
+                }
+            } catch (e) {
+                container.innerHTML = `
+                    <div class="error-box">
+                        <strong>Network Error:</strong>
+                        <pre>${e.message}</pre>
+                    </div>
+                `;
+            }
+
+            btn.disabled = false;
+            btn.textContent = 'Start';
+        }
+
+        function renderResult(result) {
+            const prob = result.probability;
+            const probColor = prob < 25 ? '#22c55e' : prob < 50 ? '#84cc16' : prob < 75 ? '#eab308' : '#ef4444';
+
+            let skillsHtml = result.used_tools && result.used_tools.length > 0 && result.used_tools[0] !== 'None'
+                ? result.used_tools.map(s => `<span class="tag active">${s}</span>`).join('')
+                : '<span style="color:#718096;font-size:13px;">None explicitly invoked</span>';
+
+            let smallModelHtml = result.small_model_used
+                ? `<span class="tag active">Used</span>`
+                : '<span style="color:#718096;font-size:13px;">Not available</span>';
+
+            const container = document.getElementById('resultContainer');
+            container.innerHTML = `
+                <div class="result-section">
+                    <div class="probability-box">
+                        <h3>Predicted 28-Day Mortality Probability</h3>
+                        <div class="probability-value" style="color:${probColor}">${Math.round(prob)}%</div>
+                    </div>
+
+                    <div class="visual-bar-wrapper">
+                        <h4>Danger Level Indicator (0-100)</h4>
+                        <div class="risk-bar-track">
+                            <div class="risk-pointer" data-value="${Math.round(prob)}" style="left:0%;"></div>
+                        </div>
+                        <div class="scale-labels">
+                            <span>0 - Low</span>
+                            <span>50 - Moderate</span>
+                            <span>100 - High</span>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-item">
+                                <div class="info-label">Skills Used</div>
+                                <div class="info-value">${skillsHtml}</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">Small Model</div>
+                                <div class="info-value">${smallModelHtml}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="analysis-box">
+                        <h3>Analysis Process</h3>
+                        <div class="analysis-content">${result.analysis}</div>
+                    </div>
+
+                    ${ (function() {
+                        if (!result.drug_results || result.drug_results.length === 0) return '';
+                        const hasDrugs = result.drug_results.some(d => d.results && d.results.length > 0);
+                        if (!hasDrugs) return '';
+                        let html = '<div class="drug-box"><h3>Drug Information (FDA Labels)</h3>';
+                        result.drug_results.forEach(drugData => {
+                            if (!drugData.results || drugData.results.length === 0) return;
+                            drugData.results.forEach(drug => {
+                                const brand = drug.brand_name || 'N/A';
+                                const generic = drug.generic_name ? ' (' + drug.generic_name + ')' : '';
+                                const mfr = drug.manufacturer ? '<div class="drug-section"><strong>Manufacturer:</strong> ' + drug.manufacturer + '</div>' : '';
+                                const indications = drug.indications ? '<div class="drug-section"><strong>Indications:</strong> ' + drug.indications.substring(0, 500) + (drug.indications.length > 500 ? '...' : '') + '</div>' : '';
+                                const warnings = drug.warnings ? '<div class="drug-section"><strong>Warnings:</strong> ' + drug.warnings.substring(0, 500) + (drug.warnings.length > 500 ? '...' : '') + '</div>' : '';
+                                html += '<div class="drug-item"><div class="drug-header"><strong>' + brand + '</strong>' + generic + '</div>' + mfr + indications + warnings + '</div>';
+                            });
+                        });
+                        html += '</div>';
+                        return html;
+                    })() }
+
+                    <div class="references-box">
+                        <h4>References</h4>
+                        <ul class="references-list">
+                            ${Array.isArray(result.references) ? result.references.map(r => {
+                                if (typeof r === 'object' && r !== null) {
+                                    // Show full info: title + source (PMID/URL)
+                                    const title = r.detail || r.title || '';
+                                    const src = r.source || '';
+                                    // Build display text
+                                    let display = title;
+                                    if (src && !title.includes(src)) {
+                                        display = title ? `${title} [${src}]` : src;
+                                    }
+                                    // Create link if PMID or URL
+                                    const pmidMatch = src.match(/PMID:\s*(\d+)/);
+                                    const pmid = pmidMatch ? pmidMatch[1] : null;
+                                    const link = pmid ? `https://pubmed.ncbi.nlm.nih.gov/${pmid}/` : (src.startsWith('http') ? src : '');
+                                    if (link) {
+                                        return `<li><a href="${link}" target="_blank">${display}</a></li>`;
+                                    }
+                                    return `<li>${display}</li>`;
+                                }
+                                return `<li>${r}</li>`;
+                            }).join('') : '<li>No references</li>'}
+                        </ul>
+                    </div>
+                </div>
+            `;
+
+            setTimeout(() => {
+                const pointer = document.querySelector('.risk-pointer');
+                if (pointer) {
+                    pointer.style.left = prob + '%';
+                }
+            }, 180);
+        }
+    </script>
+</body>
+</html>
